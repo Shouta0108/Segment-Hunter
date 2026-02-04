@@ -1,3 +1,6 @@
+![IMG_4175_Original](https://github.com/user-attachments/assets/5d4d4aaa-40df-489f-b11a-4c5f16f7c2b9)
+
+
 Segment Hunter: Joystick-Controlled Arduino Game
 
 Segment Hunter is a standalone, interactive arcade game built on the Arduino Uno platform. 
