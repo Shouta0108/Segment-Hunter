@@ -1,31 +1,50 @@
+# Segment Hunter
+
 ![IMG_4175_Original](https://github.com/user-attachments/assets/5d4d4aaa-40df-489f-b11a-4c5f16f7c2b9)
 
+**Segment Hunter** is a joystick-controlled Arduino game built as a standalone interactive project.
+It was developed as a final assignment for a **Mechatronics** course to demonstrate the integration of input devices, game logic, and display modules.
 
-Segment Hunter: Joystick-Controlled Arduino Game
+## Overview
 
-Segment Hunter is a standalone, interactive arcade game built on the Arduino Uno platform. 
-This project was developed as the final assignment for a "Mechatronics" course to demonstrate the integration of input devices, processing logic, and multi-module display outputs.
-The game challenges players to navigate a character toward a target within a strict time limit, utilizing real-time feedback from an LCD and a 7-segment LED.
+In this game, the player moves a character across a **16x2 LCD** and tries to reach a randomly placed target before time runs out.
+A **7-segment LED** shows the countdown in real time, creating a simple but fast-paced arcade-style experience.
 
+## Gameplay
 
-Gameplay
+### Objective
+Move your character (`o`) to the target (`X`) before the timer reaches zero.
 
-Objective: Move your character (o) to the target location (X) before the timer hits zero.
+### Controls
+Use the **2-axis joystick** to move freely across the **16x2 LCD** screen.
 
+### Time limit
+Each round lasts **9 seconds**. The remaining time is displayed on the **1-digit 7-segment LED**.
 
-Controls: Use the 2-axis joystick to move freely across the 16x2 LCD screen.
+### Result
+- If you reach the target in time, the game displays **`OK!`**.
+- The game then resets and places a new random target.
 
+## Hardware specifications
 
-Time Limit: You have 9 seconds per round, displayed as a live countdown on the 7-segment LED.
+| Component | Function |
+|---|---|
+| Arduino Uno | Main controller for the game |
+| 16x2 LCD | Displays the game field, player, and target |
+| 1-digit 7-segment LED | Displays the countdown timer |
+| Analog joystick | Provides X-axis and Y-axis player input |
 
-Scoring: Successfully reaching the target displays an "OK!" message and resets the game with a new random target.
+## Repository purpose
 
+This repository contains the original source code for **Segment Hunter**.
 
+## Suggested future additions
 
-Hardware Specifications
+This README can be expanded later with:
 
-Component,Function
-Arduino Uno,Central processing unit.
-16x2 LCD,"Displays the game field, player, and target."
-1-Digit 7-Segment LED,Displays the 9-second countdown.
-Analog Joystick,Provides X and Y axis user input.
+- Circuit diagram
+- Pin assignments
+- Build and upload instructions
+- Required libraries
+- Demo video or screenshots
+- License information
