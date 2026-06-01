@@ -1,279 +1,272 @@
 #include <LiquidCrystal.h>
 
-#define joyX A0
-#define joyY A1
+namespace {
 
-// --- 7セグメントLEDの配線設定 ---
-int b = 9;
-int a = 8;
-int f = 7;
-int g = 5;
-int dp = 3; 
+constexpr int kJoyXPin = A0;
+constexpr int kJoyYPin = A1;
+constexpr int kSegmentPinA = 8;
+constexpr int kSegmentPinB = 9;
+constexpr int kSegmentPinC = A4;
+constexpr int kSegmentPinD = A3;
+constexpr int kSegmentPinE = A2;
+constexpr int kSegmentPinF = 7;
+constexpr int kSegmentPinG = 5;
+constexpr int kSegmentPinDp = 3;
+constexpr int kSegmentPinCount = 8;
+constexpr int kLcdRsPin = 4;
+constexpr int kLcdEnablePin = 6;
+constexpr int kLcdDataPin4 = 10;
+constexpr int kLcdDataPin5 = 11;
+constexpr int kLcdDataPin6 = 12;
+constexpr int kLcdDataPin7 = 13;
+constexpr int kLcdColumns = 16;
+constexpr int kLcdRows = 2;
+constexpr int kInitialPlayerX = 7;
+constexpr int kInitialPlayerY = 0;
+constexpr int kInitialTimerSeconds = 9;
+constexpr unsigned long kCountdownIntervalMs = 1000;
+constexpr int kJoystickLowThreshold = 200;
+constexpr int kJoystickHighThreshold = 800;
+constexpr unsigned long kFrameDelayMs = 100;
+constexpr unsigned long kGoalMessageDelayMs = 500;
+constexpr unsigned long kClearMessageDelayMs = 2000;
+constexpr unsigned long kStartMessageDelayMs = 1000;
+constexpr int kRandomSeedPin = A5;
+constexpr int kTopRow = 0;
+constexpr int kBottomRow = 1;
+constexpr bool kSegmentPatterns[10][kSegmentPinCount] = {
+    {true, true, true, true, true, true, false, false},
+    {false, true, true, false, false, false, false, false},
+    {true, true, false, true, true, false, true, false},
+    {true, true, true, true, false, false, true, false},
+    {false, true, true, false, false, true, true, false},
+    {true, false, true, true, false, true, true, false},
+    {true, false, true, true, true, true, true, false},
+    {true, true, true, false, false, false, false, false},
+    {true, true, true, true, true, true, true, false},
+    {true, true, true, true, false, true, true, false},
+};
 
-// アナログピンをデジタルピンとして使用
-int c = A4; 
-int d = A3; 
-int e = A2;
+LiquidCrystal lcd(kLcdRsPin, kLcdEnablePin, kLcdDataPin4, kLcdDataPin5, kLcdDataPin6, kLcdDataPin7);
+const int kSegmentPins[kSegmentPinCount] = {
+    kSegmentPinA,
+    kSegmentPinB,
+    kSegmentPinC,
+    kSegmentPinD,
+    kSegmentPinE,
+    kSegmentPinF,
+    kSegmentPinG,
+    kSegmentPinDp,
+};
 
-// ピンを配列にまとめる
-int segmentPins[] = {a, b, c, d, e, f, g, dp};
+struct Position {
+    int x;
+    int y;
+};
 
-LiquidCrystal lcd(4, 6, 10, 11, 12, 13);
+struct GameState {
+    Position player;
+    Position target;
+    int remaining_seconds;
+    unsigned long previous_time_ms;
+};
 
-// ゲーム用変数
-int x = 7;
-int y = 0;
-int target_X = 0;
-int target_Y = 0;
+GameState game_state = {{kInitialPlayerX, kInitialPlayerY}, {0, 0}, kInitialTimerSeconds, 0};
 
-int timer = 9;
-unsigned long previousTime = 0;
-
-// --- 7セグ表示用関数群 ---
-
-// 全消灯
-void clearDisplay(void) {
-  digitalWrite(a, LOW);
-  digitalWrite(b, LOW);
-  digitalWrite(c, LOW);
-  digitalWrite(d, LOW);
-  digitalWrite(e, LOW);
-  digitalWrite(f, LOW);
-  digitalWrite(g, LOW);
-  digitalWrite(dp, LOW);
-}
-
-// 数字ごとの点灯パターン
-void display1(void) {
-  digitalWrite(b, HIGH);
-  digitalWrite(c, HIGH);
-}
-
-void display2(void) {
-  digitalWrite(a, HIGH);
-  digitalWrite(b, HIGH);
-  digitalWrite(g, HIGH);
-  digitalWrite(e, HIGH);
-  digitalWrite(d, HIGH);
-}
-
-void display3(void) {
-  digitalWrite(a, HIGH);
-  digitalWrite(b, HIGH);
-  digitalWrite(c, HIGH);
-  digitalWrite(d, HIGH);
-  digitalWrite(g, HIGH);
-}
-
-void display4(void) {
-  digitalWrite(f, HIGH);
-  digitalWrite(b, HIGH);
-  digitalWrite(g, HIGH);
-  digitalWrite(c, HIGH);
-}
-
-void display5(void) {
-  digitalWrite(a, HIGH);
-  digitalWrite(f, HIGH);
-  digitalWrite(g, HIGH);
-  digitalWrite(c, HIGH);
-  digitalWrite(d, HIGH);
-}
-
-void display6(void) {
-  digitalWrite(a, HIGH);
-  digitalWrite(f, HIGH);
-  digitalWrite(g, HIGH);
-  digitalWrite(c, HIGH);
-  digitalWrite(d, HIGH);
-  digitalWrite(e, HIGH);
-}
-
-void display7(void) {
-  digitalWrite(a, HIGH);
-  digitalWrite(b, HIGH);
-  digitalWrite(c, HIGH);
-}
-
-void display8(void) {
-  digitalWrite(a, HIGH);
-  digitalWrite(b, HIGH);
-  digitalWrite(c, HIGH);
-  digitalWrite(d, HIGH);
-  digitalWrite(e, HIGH);
-  digitalWrite(f, HIGH);
-  digitalWrite(g, HIGH);
-}
-
-void display9(void) {
-  digitalWrite(a, HIGH);
-  digitalWrite(b, HIGH);
-  digitalWrite(g, HIGH);
-  digitalWrite(c, HIGH);
-  digitalWrite(d, HIGH);
-  digitalWrite(f, HIGH);
-}
-
-void display0(void) {
-  digitalWrite(a, HIGH);
-  digitalWrite(b, HIGH);
-  digitalWrite(c, HIGH);
-  digitalWrite(d, HIGH);
-  digitalWrite(e, HIGH);
-  digitalWrite(f, HIGH);
-}
-
-// 【重要】数字を受け取って対応する関数を呼ぶ関数
-void showNumber(int num) {
-  clearDisplay(); // 重ならないように一度消す
-  switch (num) {
-    case 0: display0(); break;
-    case 1: display1(); break;
-    case 2: display2(); break;
-    case 3: display3(); break;
-    case 4: display4(); break;
-    case 5: display5(); break;
-    case 6: display6(); break;
-    case 7: display7(); break;
-    case 8: display8(); break;
-    case 9: display9(); break;
-    default: clearDisplay(); break; // 10以上のときは表示しない
-  }
-}
-
-// --- セットアップ ---
-void setup() {
-  // 7セグ用のピンを出力に設定
-  pinMode(a, OUTPUT);
-  pinMode(b, OUTPUT);
-  pinMode(c, OUTPUT);
-  pinMode(d, OUTPUT);
-  pinMode(e, OUTPUT);
-  pinMode(f, OUTPUT);
-  pinMode(g, OUTPUT);
-  pinMode(dp, OUTPUT);
-
-  Serial.begin(9600);
-  lcd.begin(16, 2);
-  lcd.clear();
-
-  randomSeed(analogRead(A5));
-  target_X = random(0, 16);
-  target_Y = random(0, 2);
-
-  Serial.println("START!");
-  Serial.print("Target: ");
-  Serial.print(target_X);
-  Serial.print(",");
-  Serial.println(target_Y);
-}
-
-// --- メインループ ---
-void loop() {
-  unsigned long currentTime = millis();
-  
-  // 1秒ごとの処理（カウントダウン）
-  if (currentTime - previousTime >= 1000) {
-    previousTime = currentTime;
-
-    if (timer >= 0) {
-      Serial.println(timer);
-
-      // 【ここが変わりました】7セグメントLEDに残り時間を表示
-      // 10秒のときは消灯し、9〜0のときに数字を出します
-      if (timer <= 9) {
-        showNumber(timer);
-      } else {
-        clearDisplay();
-      }
-
-      timer -= 1;
-    } else {
-      // タイムアップ処理
-      lcd.clear();
-      lcd.print("GAME OVER...");
-      Serial.println("Time Up!");
-      
-      clearDisplay(); // LEDも消す
-      
-      timer = 9;
-      delay(2000);
-
-      // リセット
-      x = 7;
-      y = 0;
-      target_X = random(0, 16);
-      target_Y = random(0, 2);
+/**
+ * @brief Turn off every segment on the 7-segment LED.
+ */
+void clear_segment_display() {
+    for (int index = 0; index < kSegmentPinCount; ++index) {
+        digitalWrite(kSegmentPins[index], LOW);
     }
-  }
+}
 
-  // --- ジョイスティック操作 ---
-  int x_val = analogRead(joyX);
+/**
+ * @brief Show one digit on the 7-segment LED.
+ * @param number Digit from 0 to 9.
+ */
+void show_number(const int number) {
+    clear_segment_display();
+    if (number < 0 || number > 9) {
+        return;
+    }
 
-  if (x_val <= 200) {
-    x += 1;
-  }
-  else if(x_val >= 800) {
-    x -= 1;
-  }
-  
-  int y_val = analogRead(joyY);
+    for (int index = 0; index < kSegmentPinCount; ++index) {
+        digitalWrite(kSegmentPins[index], kSegmentPatterns[number][index] ? HIGH : LOW);
+    }
+}
 
-  if (y_val <= 200) {
-    y = 1;
-  }
-  else if(y_val >= 800) {
-    y = 0;
-  }
+/**
+ * @brief Create a random target position on the LCD.
+ * @return New target position.
+ */
+Position make_random_target() {
+    return {random(0, kLcdColumns), random(0, kLcdRows)};
+}
 
-  if (x >= 16) {
-    x = 15;
-  }
-  if (x < 0) { // 左端制限も追加
-    x = 0;
-  }
+/**
+ * @brief Reset the player and timer for a new round.
+ */
+void reset_round() {
+    game_state.player = {kInitialPlayerX, kInitialPlayerY};
+    game_state.target = make_random_target();
+    game_state.remaining_seconds = kInitialTimerSeconds;
+    game_state.previous_time_ms = millis();
+}
 
-  // --- クリア判定 ---
-  if (x == target_X && y == target_Y) {
-    // 重なった瞬間
+/**
+ * @brief Initialize all segment pins as outputs.
+ */
+void setup_segment_pins() {
+    for (int index = 0; index < kSegmentPinCount; ++index) {
+        pinMode(kSegmentPins[index], OUTPUT);
+    }
+    clear_segment_display();
+}
+
+/**
+ * @brief Keep the player position inside the LCD bounds.
+ */
+void clamp_player_position() {
+    if (game_state.player.x < 0) {
+        game_state.player.x = 0;
+    }
+    if (game_state.player.x >= kLcdColumns) {
+        game_state.player.x = kLcdColumns - 1;
+    }
+    if (game_state.player.y < kTopRow) {
+        game_state.player.y = kTopRow;
+    }
+    if (game_state.player.y > kBottomRow) {
+        game_state.player.y = kBottomRow;
+    }
+}
+
+/**
+ * @brief Update player position from joystick input.
+ */
+void update_player_from_joystick() {
+    const int x_value = analogRead(kJoyXPin);
+    if (x_value <= kJoystickLowThreshold) {
+        game_state.player.x += 1;
+    } else if (x_value >= kJoystickHighThreshold) {
+        game_state.player.x -= 1;
+    }
+
+    const int y_value = analogRead(kJoyYPin);
+    if (y_value <= kJoystickLowThreshold) {
+        game_state.player.y = kBottomRow;
+    } else if (y_value >= kJoystickHighThreshold) {
+        game_state.player.y = kTopRow;
+    }
+
+    clamp_player_position();
+}
+
+/**
+ * @brief Draw the target and player on the LCD.
+ */
+void draw_game_screen() {
     lcd.clear();
-    lcd.setCursor(x, y); // 位置を合わせて
-    lcd.print("OK!");    // OKと表示
-    delay(500);
-    
+    lcd.setCursor(game_state.target.x, game_state.target.y);
+    lcd.print("X");
+    lcd.setCursor(game_state.player.x, game_state.player.y);
+    lcd.print("o");
+}
+
+/**
+ * @brief Show the game over message and start a new round.
+ */
+void handle_time_up() {
+    lcd.clear();
+    lcd.print("GAME OVER...");
+    Serial.println("Time Up!");
+    clear_segment_display();
+    delay(kClearMessageDelayMs);
+    reset_round();
+}
+
+/**
+ * @brief Show the clear sequence and start the next round.
+ */
+void handle_goal_reached() {
+    lcd.clear();
+    lcd.setCursor(game_state.player.x, game_state.player.y);
+    lcd.print("OK!");
+    delay(kGoalMessageDelayMs);
+
     lcd.clear();
     lcd.print("CLEAR!!");
-    clearDisplay(); // 7セグも消す
-    delay(2000); 
-    lcd.clear();
+    clear_segment_display();
+    delay(kClearMessageDelayMs);
 
-    // 次のゲームへ
-    timer = 9;
-    target_X = random(0, 16);
-    target_Y = random(0, 2);
-    x = 7;
-    y = 0;
-    
-    // ターゲットのヒントを表示
-    lcd.setCursor(target_X, target_Y);
+    reset_round();
+
+    lcd.clear();
+    lcd.setCursor(game_state.target.x, game_state.target.y);
     lcd.print("X");
-    delay(1000);
-    
+    delay(kStartMessageDelayMs);
+
     lcd.clear();
     lcd.print("START!!");
-    delay(1000);
-  }
+    delay(kStartMessageDelayMs);
+}
 
-  // --- 描画処理 ---
-  lcd.clear();
-  
-  // ターゲット表示
-  lcd.setCursor(target_X, target_Y);
-  lcd.print("X");
+/**
+ * @brief Update the countdown once per second.
+ */
+void update_countdown() {
+    const unsigned long current_time_ms = millis();
+    if (current_time_ms - game_state.previous_time_ms < kCountdownIntervalMs) {
+        return;
+    }
 
-  // プレイヤー表示
-  lcd.setCursor(x, y);
-  lcd.print("o");
+    game_state.previous_time_ms = current_time_ms;
 
-  delay(100);
+    if (game_state.remaining_seconds >= 0) {
+        Serial.println(game_state.remaining_seconds);
+        show_number(game_state.remaining_seconds);
+        game_state.remaining_seconds -= 1;
+        return;
+    }
+
+    handle_time_up();
+}
+
+/**
+ * @brief Print initial debug information to the serial monitor.
+ */
+void print_startup_log() {
+    Serial.println("START!");
+    Serial.print("Target: ");
+    Serial.print(game_state.target.x);
+    Serial.print(",");
+    Serial.println(game_state.target.y);
+}
+
+}  // namespace
+
+void setup() {
+    setup_segment_pins();
+
+    Serial.begin(9600);
+    lcd.begin(kLcdColumns, kLcdRows);
+    lcd.clear();
+
+    randomSeed(analogRead(kRandomSeedPin));
+    reset_round();
+    print_startup_log();
+}
+
+void loop() {
+    update_countdown();
+    update_player_from_joystick();
+
+    if (game_state.player.x == game_state.target.x && game_state.player.y == game_state.target.y) {
+        handle_goal_reached();
+    }
+
+    draw_game_screen();
+    delay(kFrameDelayMs);
 }
